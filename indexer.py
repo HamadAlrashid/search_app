@@ -2,6 +2,7 @@ import os
 import faiss
 import sqlite3
 import json
+import re
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
@@ -140,8 +141,14 @@ class FTS5Retriever(BaseRetriever):
             ORDER BY bm25(documents_fts) DESC
             LIMIT ?
         """
+        #query = f'"{query}"'
         
-        cursor.execute(sql_query, (query, limit))
+        # Sanitize query by removing special characters that might interfere with FTS5 search
+        sanitized_query = re.sub(r'[?!\-@#$%^&*()[\]{}|\\:;"\'<>,.\/=+~`]', ' ', query)
+        # Clean up multiple spaces and strip whitespace
+        sanitized_query = ' '.join(sanitized_query.split())
+        
+        cursor.execute(sql_query, (sanitized_query, limit))
         results = cursor.fetchall()
         
         documents = []
