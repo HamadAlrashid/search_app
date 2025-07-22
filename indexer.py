@@ -14,11 +14,14 @@ from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from pydantic import Field
-import logging
+import logging 
+import sys
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,
+    force=True
 )
 
 logger = logging.getLogger(__name__)
@@ -253,61 +256,78 @@ class Indexer:
                 dense_index_params: Parameters for the dense index.
                 embedding_model: The name of the embedding model.
             """
+            logger.info(f"Initializing Indexer with index_dir={index_dir}, sparse_index={sparse_index}, dense_index_type={dense_index_type}, embedding_model={embedding_model}")
+            
             self.index_dir = index_dir
             os.makedirs(self.index_dir, exist_ok=True) 
+            logger.info(f"Created index directory: {self.index_dir}")
 
             # Index names
             self.sparse_index_name = os.path.join(self.index_dir, f"{sparse_index}.sqlite")
-            
-
+            self.dense_index_name = "index"
             # Initialize sparse index
             if sparse_index in SUPPORTED_SPARSE_INDEXES:
+                logger.info(f"Initializing sparse index: {sparse_index}")
                 self.sparse_index = SUPPORTED_SPARSE_INDEXES[sparse_index](self.sparse_index_name)
+                logger.info(f"Successfully initialized sparse index at: {self.sparse_index_name}")
             else:
+                logger.error(f"Unsupported sparse index: {sparse_index}")
                 raise ValueError(f"Unsupported sparse index: {sparse_index}")
 
             # Initialize embedding model
             if embedding_model in SUPPORTED_EMBEDDING_MODELS:
+                logger.info(f"Initializing embedding model: {embedding_model}")
                 self.embedding_model : Embeddings = SUPPORTED_EMBEDDING_MODELS[embedding_model](model=embedding_model) # the task_type is configured in retriever.py
                 self.embedding_dim = len(self.embedding_model.embed_query("test"))
+                logger.info(f"Successfully initialized embedding model with dimension: {self.embedding_dim}")
 
             else:
+                logger.error(f"Unsupported embedding model: {embedding_model}")
                 raise ValueError(f"Unsupported embedding model: {embedding_model}")
             
             # Initialize dense index 
             self.dense_index_type = dense_index_type
             self.dense_index_params = dense_index_params or {}
+            logger.info(f"Creating dense index with type: {dense_index_type}, params: {self.dense_index_params}")
             self.dense_index = self._create_vector_store()
+            logger.info("Indexer initialization completed successfully")
             
             
     def _create_vector_store(self) -> FAISS:
         """ Initialize the vector store based on the index type """
 
+        logger.info(f"Creating vector store with index type: {self.dense_index_type}")
 
         # Brute force with L2 (euclidean distance)
         if self.dense_index_type == "flat_l2":
             self.index = faiss.IndexFlatL2(self.embedding_dim)
+            logger.info("Created IndexFlatL2 (Euclidean distance)")
         
         # Brute force with Inner-Product (cosine similarity)
         elif self.dense_index_type == "flat_ip":
             self.index = faiss.IndexFlatIP(self.embedding_dim)
+            logger.info("Created IndexFlatIP (Inner Product/Cosine similarity)")
         
         # HNSW (Hierarchical-Navigable-Small-World-Graph), the standard for dense retrieval
         elif self.dense_index_type == "hnsw":
             M = self.dense_index_params.get("M", 32)  # Number of connections
             self.index = faiss.IndexHNSWFlat(self.embedding_dim, M)
+            logger.info(f"Created IndexHNSWFlat with M={M}")
             
 
             if "efConstruction" in self.dense_index_params:
                 self.index.hnsw.efConstruction = self.dense_index_params["efConstruction"]
+                logger.info(f"Set efConstruction to {self.dense_index_params['efConstruction']}")
             if "efSearch" in self.dense_index_params:
                 self.index.hnsw.efSearch = self.dense_index_params["efSearch"]
+                logger.info(f"Set efSearch to {self.dense_index_params['efSearch']}")
             
         # Inverted-File (IVF) + Flat (k-nearest neighbors)
         elif self.dense_index_type == "ivf_flat":
             nlist = self.dense_index_params.get("nlist", 100)  # Number of clusters
             quantizer = faiss.IndexFlatL2(self.embedding_dim)
             self.index = faiss.IndexIVFFlat(quantizer, self.embedding_dim, nlist)
+            logger.info(f"Created IndexIVFFlat with nlist={nlist}")
         
         # Inverted-File (IVF) + Product-Quantization (PQ)
         elif self.dense_index_type == "ivf_pq":
@@ -316,35 +336,70 @@ class Indexer:
             nbits = self.dense_index_params.get("nbits", 8)  # Bits per subquantizer
             quantizer = faiss.IndexFlatL2(self.embedding_dim)
             self.index = faiss.IndexIVFPQ(quantizer, self.embedding_dim, nlist, m, nbits)
+            logger.info(f"Created IndexIVFPQ with nlist={nlist}, m={m}, nbits={nbits}")
         
         # Product-Quantization (PQ)
         elif self.dense_index_type == "pq":
             m = self.dense_index_params.get("m", 8)
             nbits = self.dense_index_params.get("nbits", 8)
             self.index = faiss.IndexPQ(self.embedding_dim, m, nbits)
+            logger.info(f"Created IndexPQ with m={m}, nbits={nbits}")
             
         # Locality-Sensitive Hashing (LSH)
         elif self.dense_index_type == "lsh":
             nbits = self.dense_index_params.get("nbits", self.embedding_dim * 4)
             self.index = faiss.IndexLSH(self.embedding_dim, nbits)
+            logger.info(f"Created IndexLSH with nbits={nbits}")
 
-        return FAISS(embedding_function=self.embedding_model, index=self.index, docstore=InMemoryDocstore())
+        vector_store = FAISS(embedding_function=self.embedding_model, index=self.index, docstore=InMemoryDocstore(), index_to_docstore_id={})
+        logger.info("Successfully created FAISS vector store")
+        return vector_store
+
+    def add_documents(self, documents: List[Document]) -> bool:
+        """Add documents to the index."""
+        logger.info(f"Adding {len(documents)} documents to index")
+        try:
+            self.add_documents_to_sparse_index(documents)
+            self.add_documents_to_dense_index(documents)
+            logger.info(f"Successfully added {len(documents)} documents to index")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add documents to index: {e}")
+            return False
 
     def add_documents_to_sparse_index(self, documents: List[Document]) -> bool:
         """Add documents to the sparse (FTS5) index."""
-        self.sparse_index.add_documents(documents)
-        return True
+        logger.info(f"Adding {len(documents)} documents to sparse index")
+        try:
+            self.sparse_index.add_documents(documents)
+            logger.info(f"Successfully added {len(documents)} documents to sparse index")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add documents to sparse index: {e}")
+            return False
     
     def add_documents_to_dense_index(self, documents: List[Document]) -> bool:
         """Add documents to the dense (FAISS) index."""
-        self.dense_index.add_documents(documents) 
-        
-        return True
+        logger.info(f"Adding {len(documents)} documents to dense index")
+        try:
+            self.dense_index.add_documents(documents)
+            logger.info(f"Successfully added {len(documents)} documents to dense index")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add documents to dense index: {e}")
+            return False
 
     
     def search_sparse(self, query: str, limit: int = 10) -> List[Document]:
         """Search using the sparse (FTS5) index."""
-        return self.sparse_index.search(query, limit)
+        logger.info(f"Performing sparse search with query: '{query}', limit: {limit}")
+        try:
+            results = self.sparse_index.search(query, limit)
+            logger.info(f"Sparse search returned {len(results)} results")
+            return results
+        except Exception as e:
+            logger.error(f"Sparse search failed: {e}")
+            return []
     
     def search_dense(self, query: str, embedding : list[float] = None, k: int = 10) -> List[Document]:
         """Search using the dense (FAISS) index.
@@ -358,84 +413,105 @@ class Indexer:
             List of documents
         """
         if embedding is None:
-            embedding = self.embedding_model.embed_query(query)
-            return self.dense_index.similarity_search(query, k=k)
+            logger.info(f"Performing dense search with query: '{query}', k: {k}")
+            try:
+                #embedding = self.embedding_model.embed_query(query)
+                results = self.dense_index.similarity_search(query, k=k)
+                logger.info(f"Dense search returned {len(results)} results")
+                return results
+            except Exception as e:
+                logger.error(f"Dense search failed: {e}")
+                return []
 
         # make sure embedding size is correct
         if len(embedding) != self.embedding_dim:
-            raise ValueError(f"Embedding size mismatch. Expected {self.embedding_dim}, got {len(embedding)}")
+            error_msg = f"Embedding size mismatch. Expected {self.embedding_dim}, got {len(embedding)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
-        return self.dense_index.similarity_search_by_vector(embedding, k=k)
-        
+        logger.info(f"Performing dense search with provided embedding, k: {k}")
+        try:
+            results = self.dense_index.similarity_search_by_vector(embedding, k=k)
+            logger.info(f"Dense search by vector returned {len(results)} results")
+            return results
+        except Exception as e:
+            logger.error(f"Dense search by vector failed: {e}")
+            return []
+    
+    def save_sparse_index(self):
+        """Save the sparse index to disk."""
+        logger.info("The sqlite index is on disk, which gets intialized and updated on the fly")
+        pass
     
     def save_dense_index(self):
         """Save the dense index to disk."""
-        if self.dense_index:
-            self.dense_index.save_local(folder_path=self.index_dir)
+        logger.info(f"Saving dense index to {self.index_dir}")
+        try:
+            if self.dense_index:
+                self.dense_index.save_local(folder_path=self.index_dir, index_name=self.dense_index_name)
+                logger.info(f"Successfully saved dense index to {self.index_dir}")
+            else:
+                logger.warning("No dense index to save")
+        except Exception as e:
+            logger.error(f"Failed to save dense index: {e}")
     
     def load_dense_index(self):
         """Load the dense index from disk."""
         logger.info(f"Loading dense index from {self.index_dir}")
         try:
-            if os.path.exists(self.index_dir):
-                self.dense_index = FAISS.load_local(folder_path=self.index_dir, embeddings=self.embedding_model, allow_dangerous_deserialization=True)
+            if os.path.exists(self.index_dir + "/" + self.dense_index_name + ".faiss"):
+                self.dense_index = FAISS.load_local(folder_path=self.index_dir, embeddings=self.embedding_model, index_name=self.dense_index_name, allow_dangerous_deserialization=True)
                 logger.info(f"Dense index loaded from {self.index_dir}")
             else:
                 logger.error(f"No dense index found at {self.index_dir}")
         except Exception as e:
             logger.error(f"Error loading dense index: {e}")
-    
-    def hybrid_search(self, query: str, k: int = 10, alpha: float = 0.5, nprobe: int = None) -> List[Dict[str, Any]]:
-        """
-        Perform hybrid search combining sparse and dense results.
-        
-        Args:
-            query: Search query
-            k: Number of results to return
-            alpha: Weight for dense search (0.0 = only sparse, 1.0 = only dense)
-            nprobe: Number of clusters to search (for IVF indexes)
-        """
-        sparse_results = self.search_sparse(query, limit=k*2)
-        dense_results = self.search_dense(query, k=k*2, nprobe=nprobe)
-        
-        # Simple score combination
-        combined_scores = {}
-        
-        # Add sparse results
-        for i, doc in enumerate(sparse_results):
-            doc_id = doc.get('doc_id', doc['content'][:50])
-            sparse_score = doc.get('score', 0)
-            combined_scores[doc_id] = {
-                'doc': doc,
-                'sparse_score': sparse_score,
-                'dense_score': 0,
-                'combined_score': (1 - alpha) * sparse_score
-            }
-        
-        # Add dense results
-        for i, doc in enumerate(dense_results):
-            doc_id = doc.get('doc_id', doc['content'][:50])
-            dense_score = 1 / (1 + doc.get('score', 0))  # Convert distance to similarity
+
+    def save_index(self):
+        """Save the index to disk."""
+        logger.info(f"Saving index to {self.index_dir}")
+        try:
+            self.save_dense_index()
+            logger.info(f"Successfully saved index to {self.index_dir}")
+        except Exception as e:
+            logger.error(f"Error saving index: {e}")
+
+
+    def load_index(self):
+        """Load the index from disk."""
+        logger.info(f"Loading index from {self.index_dir}")
+        try:
+            self.load_dense_index()
+            logger.info(f"Successfully loaded index from {self.index_dir}")
+        except Exception as e:
+            logger.error(f"Error loading index: {e}")
+
+    def clean_up(self):
+        """Clean up the index and remove the index files."""
+        logger.info("Starting cleanup process")
+        try:
+            # Clean up sparse index
+            logger.info("Cleaning up sparse index")
+            self.sparse_index.clear_index()
+            self.sparse_index.close()
+            if os.path.exists(self.sparse_index.db_path):
+                os.remove(self.sparse_index.db_path)
+                logger.info(f"Cleaned up sparse index {self.sparse_index.db_path}")
             
-            if doc_id in combined_scores:
-                combined_scores[doc_id]['dense_score'] = dense_score
-                combined_scores[doc_id]['combined_score'] += alpha * dense_score
-            else:
-                combined_scores[doc_id] = {
-                    'doc': doc,
-                    'sparse_score': 0,
-                    'dense_score': dense_score,
-                    'combined_score': alpha * dense_score
-                }
+            # Clean up dense index
+            dense_index_path = self.index_dir + "/" + self.dense_index_name 
+            if os.path.exists(dense_index_path + ".faiss"):
+                logger.info("Cleaning up dense index")
+                os.remove(dense_index_path + ".faiss")
+                os.remove(dense_index_path + ".pkl")
+                logger.info(f"Cleaned up dense index {dense_index_path}")
+            
+            logger.info("Cleanup completed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
         
-        # Sort by combined score and return top k
-        sorted_results = sorted(
-            combined_scores.values(),
-            key=lambda x: x['combined_score'],
-            reverse=True
-        )
         
-        return [result['doc'] for result in sorted_results[:k]]
 
 
 
