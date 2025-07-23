@@ -2,7 +2,7 @@
 
 A comprehensive RAG system that combines document preprocessing, hybrid retrieval (sparse + dense), and language model generation to provide accurate, context-aware answers to user queries.
 
-![RAG System Architecture](architecture-no-dark.png)
+![RAG System Architecture](architecture.png)
 
 
 ## Features
@@ -317,5 +317,4 @@ logging.getLogger("rag").setLevel(logging.DEBUG)
 | Performance Tests | ☐ |
 | Evaluation Datasets | ☐ |
 | Docker Containerization | ☐ |
-
 
