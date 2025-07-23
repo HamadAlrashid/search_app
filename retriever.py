@@ -53,39 +53,93 @@ class Retriever(BaseRetriever):
         """
         Get the relevant documents for a given query.
         """
-        pass
+        return self.search(query)
 
     def search(self, query: str) -> list[Document]:
+        """
+        Search for relevant documents using the configured retrieval method.
         
-        #adjust the k value for the sparse retriever
+        Args:
+            query: Search query string
+            
+        Returns:
+            List of relevant documents
+        """
+        logger.info(f"Starting search with method: {self.merger_method}")
+        
+        # Adjust the k value for the sparse retriever
         self.indexer.sparse_index.k = self.k
-        sparse_retriever : BaseRetriever = self.indexer.sparse_index
+        sparse_retriever: BaseRetriever = self.indexer.sparse_index
 
         dense_index = self.indexer.dense_index # cannot be invoked directly, so we need to use the as_retriever method
-        dense_retriever : VectorStoreRetriever = dense_index.as_retriever(search_kwargs={"k": self.k})
-
+        dense_retriever: VectorStoreRetriever = dense_index.as_retriever(search_kwargs={"k": self.k})
+    
         
         if self.merger_method == "rrf":
             # this implements RRF with weights
             logger.info(f"Using RRF with weights {self.sparse_weight} and {1 - self.sparse_weight}")
-            ensemble_retriever = EnsembleRetriever(retrievers=[sparse_retriever, dense_retriever], weights=[self.sparse_weight, 1 - self.sparse_weight])
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
             return ensemble_retriever.invoke(query)
+            
         elif self.merger_method == "interleaved": 
             logger.info(f"Using interleaved merging")
             merger = MergerRetriever(retrievers=[sparse_retriever, dense_retriever])
             return merger.invoke(query)
+            
+        elif self.merger_method == "sparse_only":
+            logger.info(f"Using sparse retrieval only")
+            return sparse_retriever.invoke(query)
+            
+        elif self.merger_method == "dense_only":
+            logger.info(f"Using dense retrieval only")
+            return dense_retriever.invoke(query)
+            
         elif self.merger_method == "cross_encoder":
-            logger.info(f"Using cross-encoder")
-            pass
+            logger.info(f"Using cross-encoder (not implemented yet, falling back to RRF)")
+            # TODO: Implement cross-encoder re-ranking
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
+            return ensemble_retriever.invoke(query)
+            
         elif self.merger_method == "multi_query":
-            logger.info(f"Using multi-query")
-            pass
+            logger.info(f"Using multi-query (not implemented yet, falling back to RRF)")
+            # TODO: Implement multi-query generation
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
+            return ensemble_retriever.invoke(query)
+            
         elif self.merger_method == "query_decomposition":
-            logger.info(f"Using query decomposition")
-            pass
+            logger.info(f"Using query decomposition (not implemented yet, falling back to RRF)")
+            # TODO: Implement query decomposition
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
+            return ensemble_retriever.invoke(query)
+            
         elif self.merger_method == "hyde":
-            logger.info(f"Using HyDE")
-            pass
+            logger.info(f"Using HyDE (not implemented yet, falling back to RRF)")
+            # TODO: Implement HyDE (Hypothetical Document Embeddings)
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
+            return ensemble_retriever.invoke(query)
+            
+        else:
+            logger.warning(f"Unknown merger method: {self.merger_method}, falling back to RRF")
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[sparse_retriever, dense_retriever], 
+                weights=[self.sparse_weight, 1 - self.sparse_weight]
+            )
+            return ensemble_retriever.invoke(query)
 
 
 
