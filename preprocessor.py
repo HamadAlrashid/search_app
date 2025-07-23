@@ -15,6 +15,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
 class Preprocessor:
     """
     A class that preprocesses input documents by:
@@ -23,24 +24,7 @@ class Preprocessor:
             - Text extraction with PyPDF2
             - OCR 
         - Splitting the text into chunks for indexing.
-        - 
     """
-    def __init__(self, options: dict = None):
-        """
-        Initialize the Preprocessor with optional configuration settings.
-        
-        Args:
-            options (dict, optional): Configuration dictionary for preprocessing settings.
-                                    Defaults to None if no options are provided.
-        """
-        self.options = options 
-        logger.info(f"Preprocessor initialized with options: {options}")
-
-from langchain_community.document_loaders import UnstructuredPDFLoader, WebBaseLoader, PyMuPDFLoader
-from langchain_community.document_loaders.parsers import RapidOCRBlobParser
-from typing import List, Optional
-
-class Preprocessor:
     def __init__(self, options: dict = None):
         """
         Initialize the Preprocessor with optional configuration settings.
@@ -50,67 +34,67 @@ class Preprocessor:
                                     Defaults to empty dict if no options are provided.
         """
         self.options = options or {}
+        self.chunk_size = self.options.get("chunk_size", 1500)
+        self.chunk_overlap = self.options.get("chunk_overlap", 200)
+        self.clean_text = self.options.get("clean_text", True)
         logger.info(f"Preprocessor initialized with options: {self.options}")
+        logger.info(f"Chunk size: {self.chunk_size}, Overlap: {self.chunk_overlap}")
 
     def extract_text_from_unstructured_pdf(self, pdf_path: str) -> List[Document]:
         """
-        * Requires eval and parameter tuning
-        Extract text from PDF using UnstructuredPDFLoader with enhanced OCR and chunking capabilities.
-        
-        Args:
-            pdf_path (str): Path to the PDF file to process
-            
-        Returns:
-            List[Document]: List of Document objects containing extracted text and metadata
-        """
-        logger.info(f"Starting unstructured PDF extraction for: {pdf_path}")
+        *requires more evals and parameter tuning
+        Extract text from PDF using UnstructuredPDFLoader with chunk overlap."""
         
         try:
             loader = UnstructuredPDFLoader(
                 pdf_path,
-                mode="elements",  
-                strategy="hi_res", 
-                ocr_languages="ara+eng",
-                
-                chunking_strategy="by_title",
-                max_characters=1500,
-                new_after_n_chars=1200,
-                combine_text_under_n_chars=150,
-                
-                infer_table_structure=True,
-                extract_images=True,
-                # coordinates=True, 
+                mode="elements", 
+                strategy="ocr_only", 
+                languages=["ara", "eng"],
+                max_characters=3000,  
+                new_after_n_chars=3000,
+                combine_text_under_n_chars=3000,
+                infer_table_structure=False, 
+                extract_images=False,
                 include_orig_elements=False,
             )
             
-            logger.info("UnstructuredPDFLoader configured with hi_res strategy and OCR for ara+eng")
+            logger.info("UnstructuredPDFLoader configured with OCR for ara+eng")
             
             documents = loader.load()
-            logger.info(f"Successfully extracted {len(documents)} document chunks from {pdf_path}")
+            logger.info(f"Successfully extracted {len(documents)} initial document chunks from {pdf_path}")
             
+            # Add chunk overlap using RecursiveCharacterTextSplitter
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.chunk_size,  
+                chunk_overlap=self.chunk_overlap,  
+                length_function=len,
+                is_separator_regex=False,
+                separators=["\n\n", "\n", " ", ""]  
+            )
             
-            return documents
+            logger.info("Applying chunk overlap with RecursiveCharacterTextSplitter...")
+            final_documents = text_splitter.split_documents(documents)
+            logger.info(f"Successfully created {len(final_documents)} chunks with overlap from {pdf_path}")
+            
+            return final_documents
             
         except Exception as e:
             logger.error(f"Failed to extract text from PDF {pdf_path}: {str(e)}")
             raise
 
-    def extract_text_from_url(self, url: str, chunk_size: int = 1000, chunk_overlap: int = 200, 
-                         clean_text: bool = True) -> List[Document]:
+    def extract_text_from_url(self, url: str) -> List[Document]:
         """
         Extract text content from web URLs using WebBaseLoader and split into chunks.
         
         Args:
             url (str): The URL to extract text content from
-            chunk_size (int): Maximum size of each chunk in characters (default: 1000)
-            chunk_overlap (int): Number of characters to overlap between chunks (default: 200)
-            clean_text (bool): Whether to perform additional text cleaning (default: True)
             
         Returns:
             List[Document]: List of Document objects containing chunked web content
         """
-        logger.info(f"Starting URL extraction for: {url}")
-        logger.info(f"Chunking parameters - size: {chunk_size}, overlap: {chunk_overlap}, clean_text: {clean_text}")
+        logger.info(f"Starting URL extraction for: {url}")  
+        logger.info(f"Chunking parameters - size: {self.chunk_size}, overlap: {self.chunk_overlap}")
         
         try:
             # Load the document from URL
@@ -127,19 +111,22 @@ class Preprocessor:
             docs = loader.load()
             logger.info(f"Successfully loaded {len(docs)} raw documents from URL")
             
-            if clean_text:
+            if self.clean_text:
                 logger.info("Applying text cleaning transformations")
                 for doc in docs:
                     original_length = len(doc.page_content)
                     doc.page_content = re.sub(r'\n\s*\n\s*\n+', '\n\n', doc.page_content) 
                     doc.page_content = re.sub(r'[ \t]+', ' ', doc.page_content)  
+                    doc.page_content = re.sub(r'\s+', ' ', doc.page_content)  
+                    # Note: Removing this line as it removes all Arabic text
+                    # doc.page_content = re.sub(r'[^a-zA-Z0-9\s]', '', doc.page_content)  
                     doc.page_content = doc.page_content.strip()  
                     cleaned_length = len(doc.page_content)
                     logger.debug(f"Text cleaned: {original_length} -> {cleaned_length} characters")
             
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
                 length_function=len,
                 is_separator_regex=False,
                 separators=["\n\n", "\n", " ", ""]  
@@ -149,33 +136,25 @@ class Preprocessor:
             chunked_documents = text_splitter.split_documents(docs)
             logger.info(f"Successfully created {len(chunked_documents)} chunks from URL content")
             
-            # Log chunk size distribution
-            if chunked_documents:
-                chunk_sizes = [len(doc.page_content) for doc in chunked_documents]
-                logger.info(f"Chunk size stats - min: {min(chunk_sizes)}, max: {max(chunk_sizes)}, avg: {sum(chunk_sizes)/len(chunk_sizes):.1f}")
-            
             return chunked_documents
             
         except Exception as e:
             logger.error(f"Failed to extract text from URL {url}: {str(e)}")
             raise
 
-    def extract_text_from_pdf(self, pdf_path: str, chunk_size: int = 1000, 
-                                     chunk_overlap: int = 200) -> List[Document]:
+    def extract_text_from_pdf(self, pdf_path: str) -> List[Document]:
         """
         Extract text, images, and tables from PDF using PyMuPDFLoader with advanced processing and chunking.
         
         Args:
             pdf_path (str): Path to the PDF file to process
-            chunk_size (int): Maximum size of each chunk in characters (default: 1000)
-            chunk_overlap (int): Number of characters to overlap between chunks (default: 200)
             
         Returns:
             List[Document]: List of Document objects containing extracted content with images and tables,
                            split into chunks for pages with substantial text content
         """
         logger.info(f"Starting PyMuPDF extraction for: {pdf_path}")
-        logger.info(f"Chunking parameters - size: {chunk_size}, overlap: {chunk_overlap}")
+        logger.info(f"Chunking parameters - size: {self.chunk_size}, overlap: {self.chunk_overlap}")
         
         try:
             loader = PyMuPDFLoader(
@@ -192,10 +171,9 @@ class Preprocessor:
             docs = loader.load()
             logger.info(f"Successfully loaded {len(docs)} pages from PDF")
             
-            
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
                 length_function=len,
                 is_separator_regex=False,
                 separators=["\n\n", "\n", " ", ""]  
@@ -205,11 +183,10 @@ class Preprocessor:
             chunked_documents = text_splitter.split_documents(docs)
             logger.info(f"Successfully created {len(chunked_documents)} chunks from {len(docs)} pages")
             
-            
             return chunked_documents
             
         except Exception as e:
             logger.error(f"Failed to extract text from PDF {pdf_path}: {str(e)}")
             raise
 
-    
+

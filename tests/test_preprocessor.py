@@ -24,21 +24,25 @@ def test_preprocessor_extract_text_from_pdf_arabic():
      keyword in docs[7].page_content or
      keyword in docs[8].page_content or
      keyword in docs[9].page_content)
-    for i, doc in enumerate(docs):
-        print(f"-----------[{i}]------------------")
-        print(doc.page_content)
-        print("--------------------------------")
+    
+    with open("tests/arabic_pdf_output.txt", "w", encoding="utf-8") as f:
+        for i, doc in enumerate(docs):
+            f.write(f"-----------[{i}]------------------\n")
+            f.write(doc.page_content)
+            f.write("\n--------------------------------\n")
 
 
 def test_preprocessor_extract_text_from_pdf_english():
     print("test_preprocessor_extract_text_from_pdf_english")
     preprocessor = Preprocessor()
-    docs = preprocessor.extract_text_from_pdf("tests/llm_study_english.pdf")
+    docs = preprocessor.extract_text_from_pdf("tests/embedding_models_notes_english.pdf")
     assert len(docs) > 0
-    for i, doc in enumerate(docs):
-        print(f"-----------[{i}]------------------")
-        print(doc.page_content)
-        print("--------------------------------")
+    
+    with open("tests/english_pdf_output.txt", "w", encoding="utf-8") as f:
+        for i, doc in enumerate(docs):
+            f.write(f"-----------[{i}]------------------\n")
+            f.write(doc.page_content)
+            f.write("\n--------------------------------\n")
 
 
 def test_preprocessor_extract_text_from_unstructured_pdf():
@@ -46,8 +50,10 @@ def test_preprocessor_extract_text_from_unstructured_pdf():
     preprocessor = Preprocessor()
     docs = preprocessor.extract_text_from_unstructured_pdf("tests/embedding_models_notes_english.pdf")
     assert len(docs) > 0
-    for i, doc in enumerate(docs):
-        print(f"-----------[{i}]------------------")
-        print(doc.page_content)
-        print("--------------------------------")
+    
+    with open("tests/unstructured_pdf_output.txt", "w", encoding="utf-8") as f:
+        for i, doc in enumerate(docs):
+            f.write(f"-----------[{i}]------------------\n")
+            f.write(doc.page_content)
+            f.write("\n--------------------------------\n")
 
