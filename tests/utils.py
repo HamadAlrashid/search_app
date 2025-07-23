@@ -3,15 +3,15 @@ from langchain_core.documents import Document
 documents = [
     Document(
         page_content="The quick brown fox jumps over the lazy dog.",
-        metadata={"source": "animal_story"}, id=1
+        metadata={"source": "animal_story"}
     ), 
     Document(
         page_content="Python is a popular programming language.",
-        metadata={"source": "tech_article"}, id=2
+        metadata={"source": "tech_article"}
     ),
     Document(
         page_content="Mount Everest is the highest mountain in the world.",
-        metadata={"source": "geography_fact"}, id=3
+        metadata={"source": "geography_fact"}
     )
 ]
 
