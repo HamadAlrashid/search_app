@@ -1,0 +1,401 @@
+==================================================
+BASIC RAG USAGE EXAMPLE
+==================================================
+2025-07-24 00:58:18,985 - INFO - Initializing RAG system with LLM: gpt-4o-mini, Embedding: text-embedding-3-large
+2025-07-24 00:58:56,036 - INFO - Initializing preprocessor
+2025-07-24 00:58:58,008 - INFO - Preprocessor initialized with options: {}
+2025-07-24 00:58:58,008 - INFO - Chunk size: 1500, Overlap: 200
+2025-07-24 00:59:03,410 - INFO - Initializing indexer
+2025-07-24 00:59:03,411 - INFO - Initializing Indexer with index_dir=indexes, sparse_index=bm25, dense_index_type=flat_l2, embedding_model=text-embedding-3-large
+2025-07-24 00:59:03,411 - INFO - Created index directory: indexes
+2025-07-24 00:59:03,411 - INFO - Initializing sparse index: bm25
+2025-07-24 00:59:03,426 - INFO - Successfully initialized sparse index at: indexes/bm25.sqlite
+2025-07-24 00:59:03,426 - INFO - Initializing embedding model: text-embedding-3-large
+2025-07-24 00:59:05,116 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 00:59:05,122 - INFO - Successfully initialized embedding model with dimension: 3072
+2025-07-24 00:59:05,122 - INFO - Creating dense index with type: flat_l2, params: {}
+2025-07-24 00:59:05,122 - INFO - Creating vector store with index type: flat_l2
+2025-07-24 00:59:05,122 - INFO - Created IndexFlatL2 (Euclidean distance)
+2025-07-24 00:59:05,122 - INFO - Successfully created FAISS vector store
+2025-07-24 00:59:05,122 - INFO - Indexer initialization completed successfully
+2025-07-24 00:59:18,329 - INFO - Initializing retriever
+2025-07-24 01:00:12,948 - INFO - Initializing LLM: gpt-4o-mini
+2025-07-24 01:00:12,977 - INFO - Successfully initialized LLM (gpt-4o-mini) with parameters: {'model': 'gpt-4o-mini', 'temperature': 0.1, 'max_tokens': 2048}
+2025-07-24 01:00:27,329 - INFO - RAG system initialization completed successfully
+Adding documents from URLs...
+2025-07-24 01:00:40,325 - INFO - Processing 2 URLs
+2025-07-24 01:00:40,325 - INFO - Processing URL: https://python.langchain.com/docs/introduction/
+2025-07-24 01:00:40,325 - INFO - Starting URL extraction for: https://python.langchain.com/docs/introduction/
+2025-07-24 01:00:40,325 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:00:40,325 - INFO - WebBaseLoader configured, loading document...
+2025-07-24 01:00:41,258 - INFO - Successfully loaded 1 raw documents from URL
+2025-07-24 01:00:41,258 - INFO - Applying text cleaning transformations
+2025-07-24 01:00:41,259 - INFO - Splitting documents into chunks...
+2025-07-24 01:00:41,261 - INFO - Successfully created 10 chunks from URL content
+2025-07-24 01:00:41,261 - INFO - Processing URL: https://docs.python.org/3/tutorial/introduction.html
+2025-07-24 01:00:41,261 - INFO - Starting URL extraction for: https://docs.python.org/3/tutorial/introduction.html
+2025-07-24 01:00:41,262 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:00:41,262 - INFO - WebBaseLoader configured, loading document...
+2025-07-24 01:00:42,092 - INFO - Successfully loaded 1 raw documents from URL
+2025-07-24 01:00:42,092 - INFO - Applying text cleaning transformations
+2025-07-24 01:00:42,093 - INFO - Splitting documents into chunks...
+2025-07-24 01:00:42,096 - INFO - Successfully created 14 chunks from URL content
+2025-07-24 01:00:42,096 - INFO - Adding 24 documents to index
+2025-07-24 01:00:42,096 - INFO - Adding 24 documents to sparse index
+2025-07-24 01:00:42,116 - INFO - Successfully added 24 documents to sparse index
+2025-07-24 01:00:42,116 - INFO - Adding 24 documents to dense index
+2025-07-24 01:00:43,172 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:00:43,586 - INFO - Successfully added 24 documents to dense index
+2025-07-24 01:00:43,586 - INFO - Successfully added 24 documents to index
+2025-07-24 01:00:43,586 - INFO - Successfully indexed 24 documents from URLs
+Adding documents from test documents...
+2025-07-24 01:00:50,396 - INFO - Adding 3 pre-processed documents to index
+2025-07-24 01:00:50,396 - INFO - Adding 3 documents to index
+2025-07-24 01:00:50,396 - INFO - Adding 3 documents to sparse index
+2025-07-24 01:00:50,419 - INFO - Successfully added 3 documents to sparse index
+2025-07-24 01:00:50,419 - INFO - Adding 3 documents to dense index
+2025-07-24 01:00:50,904 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:00:51,106 - INFO - Successfully added 3 documents to dense index
+2025-07-24 01:00:51,106 - INFO - Successfully added 3 documents to index
+2025-07-24 01:00:51,106 - INFO - Successfully indexed 3 documents
+✅ Documents added successfully
+2025-07-24 01:01:13,947 - INFO - Saving index to disk
+2025-07-24 01:01:13,947 - INFO - Saving index to indexes
+2025-07-24 01:01:13,947 - INFO - Saving dense index to indexes
+2025-07-24 01:01:13,948 - INFO - Successfully saved dense index to indexes
+2025-07-24 01:01:13,948 - INFO - Successfully saved index to indexes
+2025-07-24 01:01:13,948 - INFO - Index saved successfully
+
+🔍 Query: What is LangChain?
+2025-07-24 01:02:46,494 - INFO - Processing query: 'What is LangChain?'
+2025-07-24 01:03:43,530 - INFO - Retrieving documents for query: 'What is LangChain?'
+2025-07-24 01:03:48,138 - INFO - Starting search with method: rrf
+2025-07-24 01:04:25,855 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:04:58,696 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:05:15,890 - INFO - Retrieved 5 documents
+2025-07-24 01:09:19,826 - INFO - Generating answer with LLM
+2025-07-24 01:10:39,889 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:11:31,996 - INFO - Successfully generated answer
+💬 Answer: LangChain is a framework designed for developing applications that utilize large language models (LLMs). It simplifies the entire application lifecycle, including development, productionization, and deployment. LangChain provides open-source components and integrates with various third-party tools, allowing developers to build stateful agents and applications with features like streaming and human-in-the-loop support. Additionally, it includes specific integrations for different model providers and offers resources for monitoring and optimizing applications.
+
+🔍 Query: How do I use Python for beginners?
+2025-07-24 01:12:29,946 - INFO - Processing query: 'How do I use Python for beginners?'
+2025-07-24 01:12:29,946 - INFO - Retrieving documents for query: 'How do I use Python for beginners?'
+2025-07-24 01:12:29,946 - INFO - Starting search with method: rrf
+2025-07-24 01:12:38,442 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:12:39,394 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:12:44,603 - INFO - Retrieved 5 documents
+2025-07-24 01:12:46,504 - INFO - Generating answer with LLM
+2025-07-24 01:12:55,060 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:12:55,062 - INFO - Successfully generated answer
+💬 Answer: To get started with Python as a beginner, you can follow these steps:
+
+1. **Install Python**: Download and install the latest version of Python from the official website (python.org).
+
+2. **Use the Python Interpreter**: Open the Python interpreter by running `python` or `python3` in your command line or terminal. You will see a prompt (`>>>`) where you can start typing Python commands.
+
+3. **Basic Calculations**: You can use Python as a calculator. For example, you can type expressions like `2 + 2` or `50 - 5 * 6`, and Python will return the result.
+
+4. **Writing Code**: You can write more complex programs using a text editor. Make sure to follow Python's indentation rules, as they are crucial for defining code blocks.
+
+5. **Using Functions**: Learn to use built-in functions like `print()`, which outputs values to the console. For example, `print('Hello, World!')` will display "Hello, World!" on the screen.
+
+6. **Explore Data Types**: Familiarize yourself with different data types in Python, such as integers, floats, and strings. You can perform various operations on these types.
+
+7. **Practice**: The best way to learn is by practicing. Try writing small programs and gradually increase their complexity as you become more comfortable with the language.
+
+8. **Resources**: Utilize online tutorials, documentation, and coding platforms to enhance your learning experience.
+
+By following these steps, you'll build a solid foundation in Python programming.
+
+🔍 Query: How was SBERT trained?
+2025-07-24 01:13:33,008 - INFO - Processing query: 'How was SBERT trained?'
+2025-07-24 01:13:34,960 - INFO - Retrieving documents for query: 'How was SBERT trained?'
+2025-07-24 01:13:34,960 - INFO - Starting search with method: rrf
+2025-07-24 01:13:34,960 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:13:35,405 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:13:35,603 - INFO - Retrieved 5 documents
+2025-07-24 01:17:59,242 - INFO - Generating answer with LLM
+2025-07-24 01:18:02,581 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:18:02,589 - INFO - Successfully generated answer
+💬 Answer: SBERT, or Sentence-BERT, was trained using a method that involves fine-tuning a pre-trained BERT model on a specific task of generating sentence embeddings. This process typically includes using a dataset with sentence pairs and applying a contrastive loss function to optimize the model for semantic similarity. The training aims to ensure that similar sentences are closer in the embedding space, while dissimilar sentences are farther apart. This allows SBERT to effectively capture the semantic meaning of sentences for various downstream tasks like semantic search and clustering.
+
+🔍 Query: Mask Language Models
+2025-07-24 01:18:20,564 - INFO - Processing query: 'Mask Language Models'
+2025-07-24 01:18:20,564 - INFO - Retrieving documents for query: 'Mask Language Models'
+2025-07-24 01:18:20,564 - INFO - Starting search with method: rrf
+2025-07-24 01:18:20,564 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:18:21,235 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:18:21,330 - INFO - Retrieved 5 documents
+2025-07-24 01:18:21,330 - INFO - Generating answer with LLM
+2025-07-24 01:18:22,493 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:18:22,496 - INFO - Successfully generated answer
+💬 Answer: Could you please clarify what specific information or aspect you are looking for regarding "Mask Language Models"? Are you interested in their functionality, implementation, or something else?
+
+📊 Index Stats: {'sparse_documents': 27, 'dense_documents': 27, 'embedding_model': 'text-embedding-3-large', 'llm_model': 'gpt-4o-mini', 'retrieval_method': 'rrf', 'sparse_weight': 0.5, 'k': 5}
+2025-07-24 01:18:55,114 - INFO - Cleaning up RAG system
+2025-07-24 01:18:55,114 - INFO - Starting cleanup process
+2025-07-24 01:18:55,115 - INFO - Cleaning up sparse index
+2025-07-24 01:18:55,125 - INFO - Cleaned up sparse index indexes/bm25.sqlite
+2025-07-24 01:18:55,125 - INFO - Cleaning up dense index
+2025-07-24 01:18:55,126 - INFO - Cleaned up dense index indexes/index
+2025-07-24 01:18:55,126 - INFO - Cleanup completed successfully
+2025-07-24 01:18:55,126 - INFO - Cleanup completed successfully
+
+🧹 Cleanup completed
+(rag-env) hamad@H:~/apps/search_app$ ^C
+
+(rag-env) hamad@H:~/apps/search_app$  cd /home/hamad/apps/search_app ; /usr/bin/env /home/hamad/apps/langchain-rag/rag-env/bin/python /home/hamad/.cursor-server/extensions/ms-python.python-2023.6.0/pythonFiles/lib/python/debugpy/adapter/../../debugpy/launcher 53237 -- /home/hamad/apps/search_app/example_rag_usage.py 
+/home/hamad/.cursor-server/extensions/ms-python.python-2023.6.0/pythonFiles/lib/python/debugpy/_vendored/pydevd/pydevd_plugins/__init__.py:5: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  __import__('pkg_resources').declare_namespace(__name__)
+USER_AGENT environment variable not set, consider setting it to identify your requests.
+2025-07-24 01:20:18,305 - INFO - Loading faiss with AVX512 support.
+2025-07-24 01:20:18,320 - INFO - Successfully loaded faiss with AVX512 support.
+2025-07-24 01:20:18,326 - INFO - Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+🚀 RAG System Examples
+This script demonstrates various ways to use the RAG system.
+==================================================
+BASIC RAG USAGE EXAMPLE
+==================================================
+2025-07-24 01:20:18,437 - INFO - Initializing RAG system with LLM: gpt-4o-mini, Embedding: text-embedding-3-large
+2025-07-24 01:20:18,437 - INFO - Initializing preprocessor
+2025-07-24 01:20:18,437 - INFO - Preprocessor initialized with options: {}
+2025-07-24 01:20:18,437 - INFO - Chunk size: 1500, Overlap: 200
+2025-07-24 01:20:18,437 - INFO - Initializing indexer
+2025-07-24 01:20:18,437 - INFO - Initializing Indexer with index_dir=indexes, sparse_index=bm25, dense_index_type=flat_l2, embedding_model=text-embedding-3-large
+2025-07-24 01:20:18,437 - INFO - Created index directory: indexes
+2025-07-24 01:20:18,437 - INFO - Initializing sparse index: bm25
+2025-07-24 01:20:18,457 - INFO - Successfully initialized sparse index at: indexes/bm25.sqlite
+2025-07-24 01:20:18,457 - INFO - Initializing embedding model: text-embedding-3-large
+2025-07-24 01:20:19,643 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:20:19,740 - INFO - Successfully initialized embedding model with dimension: 3072
+2025-07-24 01:20:19,740 - INFO - Creating dense index with type: flat_l2, params: {}
+2025-07-24 01:20:19,740 - INFO - Creating vector store with index type: flat_l2
+2025-07-24 01:20:19,740 - INFO - Created IndexFlatL2 (Euclidean distance)
+2025-07-24 01:20:19,740 - INFO - Successfully created FAISS vector store
+2025-07-24 01:20:19,740 - INFO - Indexer initialization completed successfully
+2025-07-24 01:20:19,740 - INFO - Initializing retriever
+2025-07-24 01:20:19,740 - INFO - Initializing LLM: gpt-4o-mini
+2025-07-24 01:20:19,768 - INFO - Successfully initialized LLM (gpt-4o-mini) with parameters: {'model': 'gpt-4o-mini', 'temperature': 0.1, 'max_tokens': 2048}
+2025-07-24 01:20:19,768 - INFO - RAG system initialization completed successfully
+Adding documents from URLs...
+2025-07-24 01:20:19,768 - INFO - Processing 2 URLs
+2025-07-24 01:20:19,768 - INFO - Processing URL: https://python.langchain.com/docs/introduction/
+2025-07-24 01:20:19,768 - INFO - Starting URL extraction for: https://python.langchain.com/docs/introduction/
+2025-07-24 01:20:19,768 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:20:19,768 - INFO - WebBaseLoader configured, loading document...
+2025-07-24 01:20:20,448 - INFO - Successfully loaded 1 raw documents from URL
+2025-07-24 01:20:20,448 - INFO - Applying text cleaning transformations
+2025-07-24 01:20:20,449 - INFO - Splitting documents into chunks...
+2025-07-24 01:20:20,451 - INFO - Successfully created 10 chunks from URL content
+2025-07-24 01:20:20,451 - INFO - Processing URL: https://docs.python.org/3/tutorial/introduction.html
+2025-07-24 01:20:20,451 - INFO - Starting URL extraction for: https://docs.python.org/3/tutorial/introduction.html
+2025-07-24 01:20:20,451 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:20:20,452 - INFO - WebBaseLoader configured, loading document...
+2025-07-24 01:20:21,073 - INFO - Successfully loaded 1 raw documents from URL
+2025-07-24 01:20:21,073 - INFO - Applying text cleaning transformations
+2025-07-24 01:20:21,074 - INFO - Splitting documents into chunks...
+2025-07-24 01:20:21,077 - INFO - Successfully created 14 chunks from URL content
+2025-07-24 01:20:21,077 - INFO - Adding 24 documents to index
+2025-07-24 01:20:21,077 - INFO - Adding 24 documents to sparse index
+2025-07-24 01:20:21,098 - INFO - Successfully added 24 documents to sparse index
+2025-07-24 01:20:21,098 - INFO - Adding 24 documents to dense index
+2025-07-24 01:20:21,700 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:20:22,117 - INFO - Successfully added 24 documents to dense index
+2025-07-24 01:20:22,117 - INFO - Successfully added 24 documents to index
+2025-07-24 01:20:22,117 - INFO - Successfully indexed 24 documents from URLs
+Adding documents from test documents...
+2025-07-24 01:20:22,117 - INFO - Processing 2 PDF files (OCR: False)
+2025-07-24 01:20:22,117 - INFO - Processing PDF: tests/llm_study_english.pdf
+2025-07-24 01:20:22,117 - INFO - Starting PyMuPDF extraction for: tests/llm_study_english.pdf
+2025-07-24 01:20:22,117 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:20:22,117 - INFO - PyMuPDFLoader configured with image and table extraction enabled
+2025-07-24 01:20:23,378 - INFO - Successfully loaded 12 pages from PDF
+2025-07-24 01:20:23,379 - INFO - Splitting documents into chunks...
+2025-07-24 01:20:23,381 - INFO - Successfully created 22 chunks from 12 pages
+2025-07-24 01:20:23,381 - INFO - Extracted 22 chunks from tests/llm_study_english.pdf
+2025-07-24 01:20:23,381 - INFO - Processing PDF: tests/embedding_models_notes_english.pdf
+2025-07-24 01:20:23,381 - INFO - Starting PyMuPDF extraction for: tests/embedding_models_notes_english.pdf
+2025-07-24 01:20:23,381 - INFO - Chunking parameters - size: 1500, overlap: 200
+2025-07-24 01:20:23,381 - INFO - PyMuPDFLoader configured with image and table extraction enabled
+2025-07-24 01:20:38,184 - INFO - Successfully loaded 29 pages from PDF
+2025-07-24 01:20:38,185 - INFO - Splitting documents into chunks...
+2025-07-24 01:20:38,187 - INFO - Successfully created 29 chunks from 29 pages
+2025-07-24 01:20:38,187 - INFO - Extracted 29 chunks from tests/embedding_models_notes_english.pdf
+2025-07-24 01:20:38,187 - INFO - Adding 51 documents to index
+2025-07-24 01:20:38,187 - INFO - Adding 51 documents to sparse index
+2025-07-24 01:20:38,200 - INFO - Successfully added 51 documents to sparse index
+2025-07-24 01:20:38,201 - INFO - Adding 51 documents to dense index
+2025-07-24 01:20:39,059 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:20:39,572 - INFO - Successfully added 51 documents to dense index
+2025-07-24 01:20:39,572 - INFO - Successfully added 51 documents to index
+2025-07-24 01:20:39,572 - INFO - Successfully indexed 51 documents from PDFs
+✅ Documents added successfully
+2025-07-24 01:20:39,572 - INFO - Saving index to disk
+2025-07-24 01:20:39,572 - INFO - Saving index to indexes
+2025-07-24 01:20:39,572 - INFO - Saving dense index to indexes
+2025-07-24 01:20:39,573 - INFO - Successfully saved dense index to indexes
+2025-07-24 01:20:39,573 - INFO - Successfully saved index to indexes
+2025-07-24 01:20:39,573 - INFO - Index saved successfully
+
+🔍 Query: What is LangChain?
+2025-07-24 01:20:52,167 - INFO - Processing query: 'What is LangChain?'
+2025-07-24 01:20:52,167 - INFO - Retrieving documents for query: 'What is LangChain?'
+2025-07-24 01:20:52,167 - INFO - Starting search with method: rrf
+2025-07-24 01:20:52,167 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:20:57,464 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:20:57,714 - INFO - Retrieved 5 documents
+2025-07-24 01:20:57,714 - INFO - Generating answer with LLM
+2025-07-24 01:21:00,072 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:21:00,091 - INFO - Successfully generated answer
+💬 Answer: LangChain is a framework designed for developing applications that utilize large language models (LLMs). It simplifies the entire lifecycle of LLM applications, including development, productionization, and deployment. LangChain provides open-source components and integrates with various third-party tools, allowing developers to build stateful agents and applications with features like streaming and human-in-the-loop support. Additionally, it includes tools like LangGraph for orchestration and LangSmith for monitoring and evaluation of applications.
+📚 Context used: Document 1 (Source: https://python.langchain.com/docs/introduction/):
+However, these guides will help you quickly accomplish common tasks using chat models, vector stores, and other common LangChain c...
+📄 Number of documents retrieved: 5
+
+🔍 Query: How do I use Python for beginners?
+2025-07-24 01:29:53,519 - INFO - Processing query: 'How do I use Python for beginners?'
+2025-07-24 01:29:53,519 - INFO - Retrieving documents for query: 'How do I use Python for beginners?'
+2025-07-24 01:29:53,519 - INFO - Starting search with method: rrf
+2025-07-24 01:29:53,519 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:29:54,141 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:29:54,238 - INFO - Retrieved 5 documents
+2025-07-24 01:29:54,238 - INFO - Generating answer with LLM
+2025-07-24 01:30:02,997 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:30:02,998 - INFO - Successfully generated answer
+💬 Answer: To get started with Python as a beginner, you can follow these steps:
+
+1. **Install Python**: Download and install Python from the official website (python.org). Make sure to add Python to your system's PATH during installation.
+
+2. **Use the Python Interpreter**: Open the Python interpreter by typing `python` or `python3` in your command line or terminal. You will see a prompt (`>>>`) where you can start typing Python commands.
+
+3. **Basic Calculations**: You can use Python as a calculator. For example, type `2 + 2` and press Enter to see the result. You can perform various arithmetic operations like addition (+), subtraction (-), multiplication (*), and division (/).
+
+4. **Variables**: You can assign values to variables using the equal sign (`=`). For example, `width = 20` assigns the value 20 to the variable `width`.
+
+5. **Printing Output**: Use the `print()` function to display values. For example, `print('The value of width is', width)` will output the value of `width`.
+
+6. **Comments**: Use the hash character (`#`) to add comments in your code, which helps clarify your code but is not executed by Python.
+
+7. **Explore More**: As you become comfortable with the basics, explore more complex topics like control flow (if statements, loops), data structures (lists, dictionaries), and functions.
+
+8. **Practice**: The best way to learn is by practicing. Try writing small programs to reinforce your understanding.
+
+You can find more detailed tutorials and examples in the official Python documentation. Happy coding!
+📚 Context used: Document 1 (Source: https://docs.python.org/3/tutorial/introduction.html):
+3. An Informal Introduction to Python — Python 3.13.5 documentation Theme Auto Light Dark Table of Contents 3. An Informal In...
+📄 Number of documents retrieved: 5
+
+🔍 Query: How was SBERT trained?
+2025-07-24 01:33:30,608 - INFO - Processing query: 'How was SBERT trained?'
+2025-07-24 01:33:30,608 - INFO - Retrieving documents for query: 'How was SBERT trained?'
+2025-07-24 01:33:30,608 - INFO - Starting search with method: rrf
+2025-07-24 01:33:30,608 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:33:31,131 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:33:31,133 - INFO - Retrieved 5 documents
+2025-07-24 01:33:31,134 - INFO - Generating answer with LLM
+2025-07-24 01:33:34,351 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:33:34,361 - INFO - Successfully generated answer
+💬 Answer: SBERT, or Sentence Transformers, was trained using a combination of Natural Language Inference (NLI) and Sentence Text Similarity (STS) tasks. The training process involves a Siamese Network architecture, where each sentence is processed by twin BERT networks. The outputs from these networks are averaged to create sentence embeddings. These embeddings are then used in a softmax classifier to determine the relationship between sentence pairs, labeling them as entailment, contradiction, or neutral. This fine-tuning allows SBERT to generate accurate semantic representations of sentences for various NLP tasks.
+📚 Context used: Document 1 (Source: tests/embedding_models_notes_english.pdf):
+Sentence Transformers
+Natural Language Inference (NLI)
+SBERT or Sentence transformers was a major update to information retrieval, 
+since...
+📄 Number of documents retrieved: 5
+
+🔍 Query: Mask Language Models
+2025-07-24 01:35:31,316 - INFO - Processing query: 'Mask Language Models'
+2025-07-24 01:35:31,316 - INFO - Retrieving documents for query: 'Mask Language Models'
+2025-07-24 01:35:31,316 - INFO - Starting search with method: rrf
+2025-07-24 01:35:31,316 - INFO - Using RRF with weights 0.5 and 0.5
+2025-07-24 01:35:31,794 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:35:32,000 - INFO - Retrieved 5 documents
+2025-07-24 01:35:32,000 - INFO - Generating answer with LLM
+2025-07-24 01:35:33,996 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:35:33,998 - INFO - Successfully generated answer
+💬 Answer: Masked language modeling (MLM) is a technique where random tokens in a sequence are hidden, and the model is trained to predict these masked tokens based on the surrounding context. This approach, utilized in models like BERT, enhances the model's ability to understand language bidirectionally, allowing it to grasp semantic relationships effectively. MLM is particularly beneficial for pretraining, as it equips models for various tasks such as sentiment analysis and question answering.
+📚 Context used: Document 1 (Source: tests/llm_study_english.pdf):
+by balancing probability and diversity, especially in tasks like machine translation or
+dialogue generation.
+6
+Question 6: What role does temperature ...
+📄 Number of documents retrieved: 5
+
+📊 Index Stats: {'sparse_documents': 75, 'dense_documents': 75, 'embedding_model': 'text-embedding-3-large', 'llm_model': 'gpt-4o-mini', 'retrieval_method': 'rrf', 'sparse_weight': 0.5, 'k': 5}
+2025-07-24 01:36:32,401 - INFO - Cleaning up RAG system
+2025-07-24 01:36:32,401 - INFO - Starting cleanup process
+2025-07-24 01:36:32,401 - INFO - Cleaning up sparse index
+2025-07-24 01:36:32,419 - INFO - Cleaned up sparse index indexes/bm25.sqlite
+2025-07-24 01:36:32,420 - INFO - Cleaning up dense index
+2025-07-24 01:36:32,420 - INFO - Cleaned up dense index indexes/index
+2025-07-24 01:36:32,420 - INFO - Cleanup completed successfully
+2025-07-24 01:36:32,420 - INFO - Cleanup completed successfully
+
+🧹 Cleanup completed
+
+
+==================================================
+ADVANCED RAG CONFIGURATION EXAMPLE
+==================================================
+2025-07-24 01:38:41,551 - INFO - Initializing RAG system with LLM: gpt-4o, Embedding: text-embedding-3-large
+2025-07-24 01:38:41,551 - INFO - Initializing preprocessor
+2025-07-24 01:38:41,551 - INFO - Preprocessor initialized with options: {'chunk_size': 1000, 'chunk_overlap': 100, 'clean_text': True}
+2025-07-24 01:38:41,552 - INFO - Chunk size: 1000, Overlap: 100
+2025-07-24 01:38:41,552 - INFO - Initializing indexer
+2025-07-24 01:38:41,552 - INFO - Initializing Indexer with index_dir=advanced_indexes, sparse_index=bm25, dense_index_type=hnsw, embedding_model=text-embedding-3-large
+2025-07-24 01:38:41,552 - INFO - Created index directory: advanced_indexes
+2025-07-24 01:38:41,552 - INFO - Initializing sparse index: bm25
+2025-07-24 01:38:41,572 - INFO - Successfully initialized sparse index at: advanced_indexes/bm25.sqlite
+2025-07-24 01:38:41,572 - INFO - Initializing embedding model: text-embedding-3-large
+2025-07-24 01:38:42,095 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:38:42,188 - INFO - Successfully initialized embedding model with dimension: 3072
+2025-07-24 01:38:42,189 - INFO - Creating dense index with type: hnsw, params: {'M': 32, 'efConstruction': 200, 'efSearch': 100}
+2025-07-24 01:38:42,189 - INFO - Creating vector store with index type: hnsw
+2025-07-24 01:38:42,189 - INFO - Created IndexHNSWFlat with M=32
+2025-07-24 01:38:42,189 - INFO - Set efConstruction to 200
+2025-07-24 01:38:42,189 - INFO - Set efSearch to 100
+2025-07-24 01:38:42,189 - INFO - Successfully created FAISS vector store
+2025-07-24 01:38:42,189 - INFO - Indexer initialization completed successfully
+2025-07-24 01:38:42,189 - INFO - Initializing retriever
+2025-07-24 01:38:42,189 - INFO - Initializing LLM: gpt-4o
+2025-07-24 01:38:42,190 - INFO - Successfully initialized LLM (gpt-4o) with parameters: {'model': 'gpt-4o', 'temperature': 0.2, 'max_tokens': 1500}
+2025-07-24 01:38:42,190 - INFO - RAG system initialization completed successfully
+Adding custom documents...
+2025-07-24 01:39:32,999 - INFO - Adding 2 pre-processed documents to index
+2025-07-24 01:39:32,999 - INFO - Adding 2 documents to index
+2025-07-24 01:39:32,999 - INFO - Adding 2 documents to sparse index
+2025-07-24 01:39:33,015 - INFO - Successfully added 2 documents to sparse index
+2025-07-24 01:39:33,015 - INFO - Adding 2 documents to dense index
+2025-07-24 01:39:33,712 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:39:33,812 - INFO - Successfully added 2 documents to dense index
+2025-07-24 01:39:33,813 - INFO - Successfully added 2 documents to index
+2025-07-24 01:39:33,813 - INFO - Successfully indexed 2 documents
+
+🔍 Query: How does RAG work with vector databases?
+2025-07-24 01:39:47,420 - INFO - Processing query: 'How does RAG work with vector databases?'
+2025-07-24 01:39:47,420 - INFO - Retrieving documents for query: 'How does RAG work with vector databases?'
+2025-07-24 01:39:47,420 - INFO - Starting search with method: rrf
+2025-07-24 01:39:47,420 - INFO - Using RRF with weights 0.6 and 0.4
+2025-07-24 01:40:33,878 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-07-24 01:40:33,972 - INFO - Retrieved 2 documents
+2025-07-24 01:40:33,972 - INFO - Generating answer with LLM
+2025-07-24 01:40:37,374 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-24 01:40:37,376 - INFO - Successfully generated answer
+💬 Answer: RAG (Retrieval-Augmented Generation) works with vector databases by utilizing the database to perform efficient similarity searches. The vector database stores high-dimensional vectors, which represent the information needed for retrieval. When a query is made, the vector database uses methods like cosine similarity to find the most relevant information. This retrieved information is then used to augment the text generation process, enhancing the quality and relevance of the generated content.
+📚 Context used: Document 1 (Source: custom):
+RAG (Retrieval-Augmented Generation) is a technique that combines information retrieval with text generation.
+
+Document 2 (Source: custom):
+Vector databases store high-dim...
+📄 Number of documents retrieved: 2
+2025-07-24 01:41:44,757 - INFO - Cleaning up RAG system
+2025-07-24 01:41:44,757 - INFO - Starting cleanup process
+2025-07-24 01:41:44,757 - INFO - Cleaning up sparse index
+2025-07-24 01:41:44,772 - INFO - Cleaned up sparse index advanced_indexes/bm25.sqlite
+2025-07-24 01:41:44,772 - INFO - Cleanup completed successfully
+2025-07-24 01:41:44,772 - INFO - Cleanup completed successfully
+
+⚠️  Skipping Gemini example (GOOGLE_API_KEY not set)
+
+✅ All examples completed successfully!
