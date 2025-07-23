@@ -1,4 +1,5 @@
 from preprocessor import Preprocessor
+from utils import pretty_save_results
 
 
 
@@ -7,6 +8,7 @@ def test_preprocessor_extract_text_from_url():
     preprocessor = Preprocessor()
     docs = preprocessor.extract_text_from_url("https://waitbutwhy.com/2014/01/your-family-past-present-and-future.html")
     assert len(docs) > 0
+    pretty_save_results(docs, "tests/url_output.txt")
 
 
 def test_preprocessor_extract_text_from_pdf_arabic():
@@ -25,11 +27,7 @@ def test_preprocessor_extract_text_from_pdf_arabic():
      keyword in docs[8].page_content or
      keyword in docs[9].page_content)
     
-    with open("tests/arabic_pdf_output.txt", "w", encoding="utf-8") as f:
-        for i, doc in enumerate(docs):
-            f.write(f"-----------[{i}]------------------\n")
-            f.write(doc.page_content)
-            f.write("\n--------------------------------\n")
+    pretty_save_results(docs, "tests/arabic_pdf_output.txt")
 
 
 def test_preprocessor_extract_text_from_pdf_english():
@@ -37,12 +35,8 @@ def test_preprocessor_extract_text_from_pdf_english():
     preprocessor = Preprocessor()
     docs = preprocessor.extract_text_from_pdf("tests/embedding_models_notes_english.pdf")
     assert len(docs) > 0
+    pretty_save_results(docs, "tests/english_pdf_output.txt")
     
-    with open("tests/english_pdf_output.txt", "w", encoding="utf-8") as f:
-        for i, doc in enumerate(docs):
-            f.write(f"-----------[{i}]------------------\n")
-            f.write(doc.page_content)
-            f.write("\n--------------------------------\n")
 
 
 def test_preprocessor_extract_text_from_unstructured_pdf():
@@ -51,9 +45,5 @@ def test_preprocessor_extract_text_from_unstructured_pdf():
     docs = preprocessor.extract_text_from_unstructured_pdf("tests/embedding_models_notes_english.pdf")
     assert len(docs) > 0
     
-    with open("tests/unstructured_pdf_output.txt", "w", encoding="utf-8") as f:
-        for i, doc in enumerate(docs):
-            f.write(f"-----------[{i}]------------------\n")
-            f.write(doc.page_content)
-            f.write("\n--------------------------------\n")
+    pretty_save_results(docs, "tests/unstructured_pdf_output.txt")
 

@@ -1,22 +1,8 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from langchain_core.documents import Document
 from indexer import FTS5Retriever
+from utils import documents
 
-documents = [
-    Document(
-        page_content="The quick brown fox jumps over the lazy dog.",
-        metadata={"source": "animal_story"}, id=1
-    ), 
-    Document(
-        page_content="Python is a popular programming language.",
-        metadata={"source": "tech_article"}, id=2
-    ),
-    Document(
-        page_content="Mount Everest is the highest mountain in the world.",
-        metadata={"source": "geography_fact"}, id=3
-    )
-]
 
 
 def clean_up(retriever: FTS5Retriever):
