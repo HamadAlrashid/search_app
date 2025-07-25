@@ -12,7 +12,11 @@ from langchain.retrievers import EnsembleRetriever
 from collections import defaultdict
 from itertools import chain
 from langchain.retrievers.ensemble import unique_by_key
-from prompts import RAG_PROMPT
+from prompts import RAG_PROMPT, MULTI_QUERY_PROMPT
+from structured_output.multiquery import MultiQuery
+from langchain_core.prompts import ChatPromptTemplate
+import json
+from langchain_openai import ChatOpenAI
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,6 +26,36 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_llm(task: str = "multi_query", model: str = None, **kwargs):
+    """
+    create LLMs on demand.
+    
+    Args:
+        task: The task type (e.g., 'multi_query', 'hyde', 'decomposition')
+        model: Model name to use (defaults based on task)
+        **kwargs: Additional parameters for the LLM
+        
+    Returns:
+        Configured LLM instance
+    """
+    default_models = {
+        "multi_query": "gpt-3.5-turbo",
+    }
+    
+    model_name = model or default_models.get(task, "gpt-3.5-turbo")
+    
+    
+    default_params = {
+        "multi_query": {"temperature": 0, "max_tokens": 500},
+        "hyde": {"temperature": 0.3, "max_tokens": 1000}
+    }
+    
+    # Merge default params with provided kwargs
+    params = {**default_params.get(task, {"temperature": 0}), **kwargs}
+    
+    return ChatOpenAI(model=model_name, **params)
 
 class Retriever(BaseRetriever):
     """
@@ -89,11 +123,11 @@ class Retriever(BaseRetriever):
             merger = MergerRetriever(retrievers=[sparse_retriever, dense_retriever])
             return merger.invoke(query)
             
-        elif self.merger_method == "sparse_only":
+        elif self.merger_method == "sparse_only" or self.sparse_weight == 1:
             logger.info(f"Using sparse retrieval only")
             return sparse_retriever.invoke(query)
             
-        elif self.merger_method == "dense_only":
+        elif self.merger_method == "dense_only" or self.sparse_weight == 0:
             logger.info(f"Using dense retrieval only")
             return dense_retriever.invoke(query)
             
@@ -107,14 +141,29 @@ class Retriever(BaseRetriever):
             return ensemble_retriever.invoke(query)
             
         elif self.merger_method == "multi_query":
-            logger.info(f"Using multi-query (not implemented yet, falling back to RRF)")
-            # TODO: Implement multi-query generation
-            ensemble_retriever = EnsembleRetriever(
-                retrievers=[sparse_retriever, dense_retriever], 
-                weights=[self.sparse_weight, 1 - self.sparse_weight]
-            )
-            return ensemble_retriever.invoke(query)
+            number_of_queries = 3
+            logger.info(f"Using multi-query with {number_of_queries} queries")
             
+            generated_queries = self._generate_multi_query(query, number_of_queries)
+            
+            all_result_lists = []
+            
+            for query_text in generated_queries:
+                try:
+                    sparse_docs = sparse_retriever.invoke(query_text)
+                    all_result_lists.append(sparse_docs)
+                    
+                    dense_docs = dense_retriever.invoke(query_text)
+                    all_result_lists.append(dense_docs)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve for query '{query_text}': {e}")
+                    
+            
+            # Apply RRF on multiple sorted document lists
+            logger.info(f"Applying RRF fusion across {len(all_result_lists)} result lists")
+            return self._apply_reciprocal_rank_fusion(all_result_lists)
+                
         elif self.merger_method == "query_decomposition":
             logger.info(f"Using query decomposition (not implemented yet, falling back to RRF)")
             # TODO: Implement query decomposition
@@ -142,8 +191,77 @@ class Retriever(BaseRetriever):
             return ensemble_retriever.invoke(query)
 
 
+    def _generate_multi_query(self, query: str, number_of_queries: int = 3) -> MultiQuery:
+        """
+        Generate multiple queries using LLM
+        """
+        llm = get_llm("multi_query")
+        structured_llm = llm.with_structured_output(MultiQuery)
+        prompt = ChatPromptTemplate.from_template(MULTI_QUERY_PROMPT).partial(number_of_queries=number_of_queries)
+        new_queries_chain = prompt | structured_llm
+        
+        generated_queries = new_queries_chain.invoke({"query": query})
+        logger.info(f"Generated queries: {generated_queries}")
+        
+        generated_queries.queries.append(query)
+        logger.info(f"Total queries for multi-query search: {len(generated_queries)}")
 
+        return generated_queries
+
+    def _apply_reciprocal_rank_fusion(
+        self, query_results: list[list[Document]], k: int = 60
+    ) -> list[Document]:
+        """
+        Apply Reciprocal Rank Fusion to merge results from multiple queries.
+        
+        Args:
+            query_results: List of document lists from different queries
+            k: RRF constant (typically 60)
+            
+        Returns:
+            Fused and ranked list of unique documents
+        """
+        rrf_scores = {}
+        
+        for doc_list in query_results:
+            for rank, doc in enumerate(doc_list):
+                # Use page_content + metadata for unique identification
+                doc_key = self._get_document_key(doc)
+                
+                if doc_key not in rrf_scores:
+                    rrf_scores[doc_key] = {
+                        'document': doc,
+                        'score': 0.0
+                    }
+                
+                # RRF formula: score += 1 / (k + rank)
+                rrf_scores[doc_key]['score'] += 1.0 / (k + rank)
+        
+        # Sort by RRF score (descending) and return top k documents
+        sorted_docs = sorted(
+            rrf_scores.values(),
+            key=lambda x: x['score'],
+            reverse=True
+        )
+        
+        result_docs = [item['document'] for item in sorted_docs[:self.k]]
+        logger.info(f"RRF fusion: {len(rrf_scores)} unique docs, returning top {len(result_docs)}")
+        
+        return result_docs
     
+    def _get_document_key(self, doc: Document) -> str:
+        """
+        Generate a unique key for a document to handle duplicates.
+        Uses a combination of content hash and metadata for uniqueness.
+        """
+        # Use first 100 chars of content + source metadata for key
+        content_preview = doc.page_content[:100].strip()
+        source = doc.metadata.get('source', '')
+        page = doc.metadata.get('page', '')
+        
+        # Create a composite key
+        return f"{hash(content_preview)}_{source}_{page}"
+
     # copied from langchain.retrievers.ensemble.py
     def weighted_reciprocal_rank(
         self, doc_lists: list[list[Document]]

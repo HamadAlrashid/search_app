@@ -20,3 +20,48 @@ User Query: {query}
 {context}
 </context>
 """
+
+# prompt for generating number_of_queries different queries 
+MULTI_QUERY_PROMPT = """You are an expert query generation AI assistant for a Retrieval-Augmented Generation (RAG) system. 
+
+Your task is to reformulate the user's question into exactly {number_of_queries} diverse search queries that will help retrieve comprehensive and relevant documents.
+
+Generate queries that:
+- Use different keywords and phrasings than the original
+- Cover different aspects or angles of the question
+- Are semantically similar but lexically diverse
+- Would retrieve complementary information
+
+**Original Question:** {query}
+
+Generate exactly {number_of_queries} alternative queries. Do not include the original question."""
+
+
+MULTI_QUERY_PROMPT2 = """
+You are an expert query generation AI assistant for a Retrieval-Augmented Generation (RAG) system. Your sole purpose is to reformulate a single user's question into a set of 3 synonymous search queries. These queries will be used to retrieve relevant documents.
+
+Generate queries that are semantically similar to the original question but use different keywords and phrasing.
+
+**User's Original Question:**
+"{query}"
+
+Based on the user's question above, generate a JSON array of 3 alternative queries that are rephrased or use synonyms.
+
+**CRITICAL:**
+- Your output **MUST** be a single, valid JSON array of strings.
+- Do **NOT** include the original question in the output.
+- Do **NOT** add any explanations, introductory text, or markdown formatting around the JSON output.
+
+**Example:**
+
+**User's Original Question:**
+"Why is the sky blue during the day but red during sunset?"
+
+**Your Output:**
+[
+  "what causes the sky's color to be blue and then red at sunset",
+  "explain the reason for the sky changing color from blue to red",
+  "what is the scientific reason for the sky's blue daytime color and red sunset color"
+]
+"""
+
