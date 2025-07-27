@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from langchain_core.documents import Document
 
 documents = [
@@ -34,3 +35,10 @@ def pretty_save_results(results: list[Document], file_name: str):
             f.write(result.page_content)
             f.write(f"Metadata: {result.metadata}\n")
             f.write("-------------------------------\n")
+
+
+def rag_answer_with_context(answer : Dict[str, Any]):
+    print(f"💬 Answer: {answer['answer']}\n\n")
+    print(f"📚 Context used: {answer['context']}\n\n")
+    print(f"📄 Number of documents retrieved: {answer['num_documents']}")
+    
