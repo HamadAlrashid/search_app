@@ -4,7 +4,7 @@ class MultiQuery(BaseModel):
     queries: list[str]
 
     def __str__(self):
-        return "\n".join(self.queries)
+        return ",".join(self.queries)
 
     def __iter__(self):
         return iter(self.queries)

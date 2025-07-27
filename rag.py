@@ -6,12 +6,13 @@ from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
-from langchain_core.prompts import PromptTemplate
-
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
 from preprocessor import Preprocessor
 from indexer import Indexer
 from retriever import Retriever
-from prompts import RAG_PROMPT
+from prompts import RAG_PROMPT, MULTI_QUERY_PROMPT, QUERY_DECOMPOSITION_PROMPT, task_map
+from structured_output.multiquery import MultiQuery
 
 logging.basicConfig(
     level=logging.INFO,
@@ -153,6 +154,67 @@ class RAG:
             input_variables=["query", "context"]
         )
     
+    def _get_llm(self, task: str = "multi_query", model: str = None, **kwargs):
+        """
+        Create LLMs on demand for advanced retrieval tasks.
+        
+        Args:
+            task: The task type (e.g., 'multi_query', 'hyde', 'decomposition')
+            model: Model name to use (defaults based on task)
+            **kwargs: Additional parameters for the LLM
+            
+        Returns:
+            Configured LLM instance
+        """
+        default_models = {
+            "multi_query": "gpt-3.5-turbo",
+            "query_decomposition": "gpt-3.5-turbo",
+            "hyde": "gpt-3.5-turbo",
+        }
+        
+        model_name = model or default_models.get(task, "gpt-3.5-turbo")
+        
+        default_params = {
+            "multi_query": {"temperature": 0, "max_tokens": 500},
+            "hyde": {"temperature": 0.3, "max_tokens": 1000}
+        }
+        
+        # Merge default params with provided kwargs
+        params = {**default_params.get(task, {"temperature": 0}), **kwargs}
+        
+        return ChatOpenAI(model=model_name, **params)
+    
+    def _generate_queries(self, query: str, number_of_queries: int = 3, task: str = "multi_query") -> MultiQuery:
+        """
+        Generate multiple queries using LLM for multi-query retrieval or query decomposition.
+        
+        Args:
+            query: Original user query
+            number_of_queries: Number of alternative queries to generate
+            task: Task type (multi_query or query_decomposition)
+        Returns:
+            MultiQuery object containing the generated queries
+        """
+        if task not in ["multi_query", "query_decomposition"]:
+            logger.warning(f"Invalid task: {task}. Using default task: multi_query")
+            task = "multi_query"
+        
+        logger.info(f"Generating {number_of_queries} queries for {task} retrieval")
+        
+        llm = self._get_llm(task)
+        structured_llm = llm.with_structured_output(MultiQuery)
+        prompt = ChatPromptTemplate.from_template(task_map[task]).partial(number_of_queries=number_of_queries)
+        new_queries_chain = prompt | structured_llm
+        
+        generated_queries = new_queries_chain.invoke({"query": query})
+        generated_queries.queries.append(query)  # Include original query
+        
+        logger.info(f"Generated queries: {generated_queries}")
+        logger.info(f"Total queries for {task} search: {len(generated_queries)}")
+        
+        return generated_queries
+
+    
     def add_documents_from_urls(self, urls: List[str]) -> bool:
         """
         Add documents from a list of URLs to the index.
@@ -263,7 +325,7 @@ class RAG:
     
     def retrieve_documents(self, query: str) -> List[Document]:
         """
-        Retrieve relevant documents for a query.
+        Retrieve relevant documents for a query using the configured retrieval method.
         
         Args:
             query: Search query
@@ -271,16 +333,35 @@ class RAG:
         Returns:
             List of relevant documents
         """
-        logger.info(f"Retrieving documents for query: '{query}'")
+        logger.info(f"Retrieving documents for query: '{query}' using method: {self.retrieval_method}")
         
         try:
-            documents = self.retriever.search(query)
-            logger.info(f"Retrieved {len(documents)} documents")
-            return documents
-            
+            if self.retrieval_method == "multi_query":
+                logger.info("Using multi-query retrieval")
+                generate_queries_partial = RunnableLambda(
+                    lambda query: self._generate_queries(query, number_of_queries=3, task="multi_query")
+                )
+                
+                chain = (generate_queries_partial | 
+                         RunnableLambda(self.retriever.multi_search) | 
+                         RunnableLambda(self.retriever.apply_reciprocal_rank_fusion))
+                
+                documents = chain.invoke(query)
+                
+                return documents
+
+            else:
+                # For basic methods: rrf, interleaved, sparse_only, dense_only
+                documents = self.retriever.search(query)
+                logger.info(f"Retrieved {len(documents)} documents")
+                return documents
+                
         except Exception as e:
             logger.error(f"Error retrieving documents: {e}")
             return []
+    
+
+    
     
     def format_context(self, documents: List[Document]) -> str:
         """
@@ -301,11 +382,12 @@ class RAG:
             content = doc.page_content.strip()
             context_parts.append(f"Document {i} (Source: {source}):\n{content}")
         
-        return "\n\n".join(context_parts)
+        return "\n\n".join(context_parts)+"\n\n"
     
     def generate_answer(self, query: str, context: str) -> str:
         """
         Generate an answer using the LLM with the provided context.
+        If query decomposition is used, the context will be enriched with the Q&As of the sub-queries.
         
         Args:
             query: User query
@@ -317,6 +399,7 @@ class RAG:
         logger.info("Generating answer with LLM")
         
         try:
+
             # Format the prompt
             formatted_prompt = self.prompt_template.format(
                 query=query,
@@ -351,8 +434,8 @@ class RAG:
             # Retrieve relevant documents
             documents = self.retrieve_documents(query)
             
-            # Format context
-            context = self.format_context(documents)
+            # Enrich and Format context
+            context = self.enrich_and_format_context(documents, query)
             
             # Generate answer
             answer = self.generate_answer(query, context)
@@ -380,6 +463,56 @@ class RAG:
                 }
             else:
                 return error_msg
+
+    def enrich_and_format_context(self, context: List[Document], query: str) -> str:
+        """
+        Format the context always and enrich it in case query decomposition is used as a retrieval method.
+        The context will be enriched with the Q&As of the sub-queries.
+
+        Args:
+            context: Original context documents
+            query: Original user query
+
+        Returns:
+            formatted string of the context to be used in the LLM prompt
+        """
+        formatted_context = self.format_context(context)
+        
+        if self.retrieval_method == "query_decomposition":
+            logger.info("Enriching context with Q&As of the sub-queries")
+            
+            decomposed_queries = self._generate_queries(query, number_of_queries=3, task="query_decomposition")
+            
+            llm = self._get_llm("query_decomposition")
+            
+            # Create a chain for sub-query answering
+            def search_and_preserve_query(sub_query: str):
+                documents = self.retriever.search(sub_query)
+                return {"query": sub_query, "documents": documents}
+            
+            def format_for_prompt(data: Dict[str, Any]):
+                return {
+                    "query": data["query"],
+                    "context": self.format_context(data["documents"])
+                }
+            
+            sub_query_chain = (
+                RunnableLambda(search_and_preserve_query) |
+                RunnableLambda(format_for_prompt) |
+                self.prompt_template |
+                llm
+            )
+            
+            # Answer each sub-query and append to context
+            for sub_query in decomposed_queries.queries:
+                try:
+                    response = sub_query_chain.invoke(sub_query)
+                    sub_answer = response.content if hasattr(response, 'content') else str(response)
+                    formatted_context += f"Sub-query: {sub_query}\nAnswer: {sub_answer}\n\n"
+                except Exception as e:
+                    logger.warning(f"Failed to answer sub-query '{sub_query}': {e}")
+            
+        return formatted_context
     
     def save_index(self):
         """Save the current index to disk."""

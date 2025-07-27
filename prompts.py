@@ -65,3 +65,22 @@ Based on the user's question above, generate a JSON array of 3 alternative queri
 ]
 """
 
+QUERY_DECOMPOSITION_PROMPT = """
+You are an expert query decomposition AI assistant for a Retrieval-Augmented Generation (RAG) system. Your sole purpose is to decompose a single user's question into a set of sub-queries. These sub-queries will be used to retrieve relevant documents.
+
+The goal is to break down the input into a set of sub-problems / sub-questions that can be answers in isolation.
+
+**User's Original Question:**
+"{query}"
+
+Generate no more than {number_of_queries} sub-queries. Do not include the original question in the output.
+"""
+
+
+
+task_map = {
+  "multi_query": MULTI_QUERY_PROMPT,
+  "query_decomposition": QUERY_DECOMPOSITION_PROMPT,
+  "rag": RAG_PROMPT,
+  
+}
