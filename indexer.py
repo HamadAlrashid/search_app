@@ -18,6 +18,12 @@ from pydantic import Field
 import logging 
 import sys
 
+try:
+    from local_models import LocalEmbeddings, get_local_embeddings
+    LOCAL_MODELS_AVAILABLE = True
+except ImportError:
+    LOCAL_MODELS_AVAILABLE = False
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -232,6 +238,15 @@ class FTS5Retriever(BaseRetriever):
 SUPPORTED_EMBEDDING_MODELS = {
     "models/embedding-001": GoogleGenerativeAIEmbeddings,
     "text-embedding-3-large": OpenAIEmbeddings,
+    # Local embedding models (use prefix 'local:' to indicate local model)
+    "local:all-MiniLM-L6-v2": "LocalEmbeddings",
+    "local:all-MiniLM-L12-v2": "LocalEmbeddings", 
+    "local:all-mpnet-base-v2": "LocalEmbeddings",
+    "local:BAAI/bge-small-en-v1.5": "LocalEmbeddings",
+    "local:BAAI/bge-base-en-v1.5": "LocalEmbeddings",
+    "local:paraphrase-multilingual-MiniLM-L12-v2": "LocalEmbeddings",
+    "local:Qwen/Qwen3-Embedding-4B": "LocalEmbeddings",
+    "local:Qwen/Qwen3-Embedding-0.6B": "LocalEmbeddings",
 }
 
 SUPPORTED_DENSE_INDEXES = {
@@ -284,7 +299,20 @@ class Indexer:
             # Initialize embedding model
             if embedding_model in SUPPORTED_EMBEDDING_MODELS:
                 logger.info(f"Initializing embedding model: {embedding_model}")
-                self.embedding_model : Embeddings = SUPPORTED_EMBEDDING_MODELS[embedding_model](model=embedding_model) # the task_type is configured in retriever.py
+                
+                # Handle local embedding models
+                if embedding_model.startswith("local:"):
+                    if not LOCAL_MODELS_AVAILABLE:
+                        raise ImportError("local_models module not available. Please ensure the local_models.py file is present.")
+                    
+                    # Extract the actual model name (remove 'local:' prefix)
+                    actual_model_name = embedding_model[6:]  # Remove 'local:' prefix
+                    self.embedding_model: Embeddings = get_local_embeddings(model_name=actual_model_name)
+                else:
+                    # Handle cloud-based embedding models
+                    embedding_class = SUPPORTED_EMBEDDING_MODELS[embedding_model]
+                    self.embedding_model: Embeddings = embedding_class(model=embedding_model)
+                
                 self.embedding_dim = len(self.embedding_model.embed_query("test"))
                 logger.info(f"Successfully initialized embedding model with dimension: {self.embedding_dim}")
 

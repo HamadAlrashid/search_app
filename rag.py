@@ -13,6 +13,7 @@ from indexer import Indexer
 from retriever import Retriever
 from prompts import RAG_PROMPT, MULTI_QUERY_PROMPT, QUERY_DECOMPOSITION_PROMPT, task_map
 from structured_output.multiquery import MultiQuery
+from local_models import LocalLLM, LocalEmbeddings, get_local_llm, get_local_embeddings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,6 +30,19 @@ SUPPORTED_LLM_MODELS = {
     "gpt-4o": ChatOpenAI,
     "gpt-4o-mini": ChatOpenAI,
     "gpt-3.5-turbo": ChatOpenAI,
+    "local:microsoft/DialoGPT-medium": LocalLLM,
+    "local:distilgpt2": LocalLLM,
+    "local:microsoft/phi-2": LocalLLM,
+    "local:TinyLlama/TinyLlama-1.1B-Chat-v1.0": LocalLLM,
+    "local:meta-llama/Llama-2-7b-chat-hf": LocalLLM,
+    "local:mistralai/Mistral-7B-Instruct-v0.1": LocalLLM,
+    "local:Qwen/Qwen1.5-7B-Chat": LocalLLM,
+    "local:Qwen/Qwen2.5-1.5B-Instruct": LocalLLM,
+    "local:Qwen/Qwen2.5-3B-Instruct": LocalLLM,
+    "local:Qwen/Qwen2.5-7B-Instruct": LocalLLM,
+    "local:Qwen/Qwen2.5-14B-Instruct": LocalLLM,
+    "local:Qwen/Qwen2.5-32B-Instruct": LocalLLM,
+    "local:Qwen/Qwen2.5-72B-Instruct": LocalLLM,
 }
 
 class RAG:
@@ -134,16 +148,34 @@ class RAG:
         
         logger.info(f"Initializing LLM: {self.llm_model}")
         
-        # Set default parameters
-        default_params = {
-            "model": self.llm_model,
-            "temperature": 0.1,
-            "max_tokens": 2048
-        }
-        default_params.update(llm_params)
-        
         llm_class = SUPPORTED_LLM_MODELS[self.llm_model]
-        self.llm: BaseChatModel = llm_class(**default_params)
+        
+        # Handle local models differently
+        if self.llm_model.startswith("local:"):
+            # Extract the actual model name (remove 'local:' prefix)
+            actual_model_name = self.llm_model[6:]  # Remove 'local:' prefix
+            
+            # Set default parameters for local models
+            default_params = {
+                "model_name": actual_model_name,
+                "temperature": 0.1,
+                "max_tokens": 1000
+            }
+            default_params.update(llm_params)
+            
+            # Use the helper function for better configuration
+            self.llm: BaseChatModel = get_local_llm(**default_params)
+            
+        else:
+            # Handle cloud-based models (OpenAI, Google)
+            default_params = {
+                "model": self.llm_model,
+                "temperature": 0.1,
+                "max_tokens": 2048
+            }
+            default_params.update(llm_params)
+            
+            self.llm: BaseChatModel = llm_class(**default_params)
         
         logger.info(f"Successfully initialized LLM ({self.llm_model}) with parameters: {default_params}")
     
@@ -182,7 +214,16 @@ class RAG:
         # Merge default params with provided kwargs
         params = {**default_params.get(task, {"temperature": 0}), **kwargs}
         
-        return ChatOpenAI(model=model_name, **params)
+        # Handle local models
+        if model_name.startswith("local:"):
+            actual_model_name = model_name[6:]  # Remove 'local:' prefix
+            local_params = {
+                "model_name": actual_model_name,
+                **params
+            }
+            return get_local_llm(**local_params)
+        else:
+            return ChatOpenAI(model=model_name, **params)
     
     def _generate_queries(self, query: str, number_of_queries: int = 3, task: str = "multi_query") -> MultiQuery:
         """
