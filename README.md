@@ -305,8 +305,6 @@ logging.getLogger("rag").setLevel(logging.DEBUG)
 | LangSmith Integration for monitoring | ☐ |
 | Local LLM Support | ☐ |
 | Cross-Encoder Re-ranking | ☐ |
-| Multi-Query Generation | ☑ |
-| Query Decomposition | ☐ |
 | HyDE Implementation | ☐ |
 | Docling PDF Processing | ☐ |
 | FTS5 query tokens should be ORed | ☐ |
