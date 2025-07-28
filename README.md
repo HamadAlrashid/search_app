@@ -303,7 +303,6 @@ logging.getLogger("rag").setLevel(logging.DEBUG)
 | Feature | Status |
 |---------|--------|
 | LangSmith Integration for monitoring | ☐ |
-| Local LLM Support | ☐ |
 | Cross-Encoder Re-ranking | ☐ |
 | HyDE Implementation | ☐ |
 | Docling PDF Processing | ☐ |
